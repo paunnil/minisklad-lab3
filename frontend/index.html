@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Мінісклад — навчальний клієнт-серверний застосунок для обліку товарів." />
+  <title>Мінісклад — облік товарів</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./config.js" defer></script>
+  <script src="./demo-data.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container header-content">
+      <a class="brand" href="./" aria-label="Мінісклад — головна">
+        <span class="brand-icon" aria-hidden="true">▦</span>
+        <span>Мінісклад <small>Навчальний вебзастосунок</small></span>
+      </a>
+      <span id="connection-status" class="status-pill status-loading" role="status">Підключення…</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="page-heading">
+      <div>
+        <h1>Облік товарів</h1>
+        <p class="intro">Додавайте товари, переглядайте залишки та контролюйте загальну вартість складу.</p>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Показники складу">
+      <article class="stat-card">
+        <p>Найменувань</p>
+        <strong id="stat-products">—</strong>
+        <small>Різних товарів</small>
+      </article>
+      <article class="stat-card">
+        <p>Одиниць товару</p>
+        <strong id="stat-quantity">—</strong>
+        <small>Сумарна кількість</small>
+      </article>
+      <article class="stat-card">
+        <p>Загальна вартість</p>
+        <strong id="stat-value">—</strong>
+        <small>Кількість × ціна</small>
+      </article>
+      <article class="stat-card stat-warning">
+        <p>Малий залишок</p>
+        <strong id="stat-low-stock">—</strong>
+        <small>Менше ніж 5 одиниць</small>
+      </article>
+    </section>
+
+    <div id="global-message" class="global-message" hidden role="alert"></div>
+
+    <div class="content-grid">
+      <section class="panel inventory-panel" aria-labelledby="inventory-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="inventory-heading">Товари на складі</h2>
+            <p class="muted">Демонстраційні дані</p>
+          </div>
+          <button id="refresh-button" class="button-secondary" type="button">↻ Оновити</button>
+        </div>
+
+        <div class="filters">
+          <label class="search-wrap">
+            <span class="visually-hidden">Пошук за назвою</span>
+            <input id="search-input" type="search" placeholder="Пошук товару за назвою…" autocomplete="off" />
+          </label>
+          <label class="check-filter"><input id="only-low-stock" type="checkbox" /> Лише малий залишок</label>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Товар</th>
+                <th class="number">Кількість</th>
+                <th class="number">Ціна</th>
+                <th class="number">Вартість</th>
+                <th>Стан</th>
+              </tr>
+            </thead>
+            <tbody id="products-body"></tbody>
+          </table>
+        </div>
+        <p id="empty-state" class="empty-state" hidden>Товарів за вибраними умовами немає.</p>
+      </section>
+
+      <aside class="panel form-panel" aria-labelledby="add-product-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="add-product-heading">Новий товар</h2>
+            <p class="muted">Додайте товар до списку</p>
+          </div>
+        </div>
+
+        <form id="product-form">
+          <label for="product-name">Назва товару</label>
+          <input id="product-name" name="name" type="text" minlength="2" maxlength="60" placeholder="Наприклад, USB-хаб" required />
+
+          <div class="form-two-columns">
+            <div>
+              <label for="product-quantity">Кількість</label>
+              <input id="product-quantity" name="quantity" type="number" min="0" max="100000" step="1" value="1" required />
+            </div>
+            <div>
+              <label for="product-price">Ціна, грн</label>
+              <input id="product-price" name="price" type="number" min="0" max="10000000" step="0.01" placeholder="0.00" required />
+            </div>
+          </div>
+
+          <button id="submit-button" class="button-primary" type="submit">+ Додати товар</button>
+          <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </aside>
+    </div>
+
+    <footer class="site-footer">Навчальний проєкт «Мінісклад» · Node.js / Express / HTML / CSS / JavaScript</footer>
+  </main>
+</body>
+</html>
