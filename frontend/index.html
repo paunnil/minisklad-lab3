@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="uk">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,6 +11,7 @@
   <script src="./demo-data.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
+
 <body>
   <header class="topbar">
     <div class="container header-content">
@@ -89,7 +91,7 @@
         <p id="empty-state" class="empty-state" hidden>Товарів за вибраними умовами немає.</p>
       </section>
 
-      <aside class="panel form-panel" aria-labelledby="add-product-heading" hidden>
+      <aside class="panel form-panel" aria-labelledby="add-product-heading">
         <div class="panel-heading">
           <div>
             <h2 id="add-product-heading">Новий товар</h2>
@@ -99,20 +101,30 @@
 
         <form id="product-form">
           <label for="product-name">Назва товару</label>
-          <input id="product-name" name="name" type="text" minlength="2" maxlength="60" placeholder="Наприклад, USB-хаб" required />
+          <input id="product-name" name="name" type="text" minlength="2" maxlength="60" placeholder="Наприклад, USB-хаб"
+            required />
 
           <div class="form-two-columns">
             <div>
               <label for="product-quantity">Кількість</label>
-              <input id="product-quantity" name="quantity" type="number" min="0" max="100000" step="1" value="1" required />
+              <input id="product-quantity" name="quantity" type="number" min="0" max="100000" step="1" value="1"
+                required />
             </div>
             <div>
               <label for="product-price">Ціна, грн</label>
-              <input id="product-price" name="price" type="number" min="0" max="10000000" step="0.01" placeholder="0.00" required />
+              <input id="product-price" name="price" type="number" min="0" max="10000000" step="0.01" placeholder="0.00"
+                required />
             </div>
           </div>
 
-          <button id="submit-button" class="button-primary" type="submit">+ Додати товар</button>
+          <button id="submit-button" class="button-primary" type="submit">
+            + Додати товар
+          </button>
+
+          <button id="cancel-edit-button" class="button-secondary" type="button" hidden>
+            Скасувати редагування
+          </button>
+
           <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
         </form>
       </aside>
@@ -121,4 +133,5 @@
     <footer class="site-footer">Навчальний проєкт «Мінісклад» · Node.js / Express / HTML / CSS / JavaScript</footer>
   </main>
 </body>
+
 </html>

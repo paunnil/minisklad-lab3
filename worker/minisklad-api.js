@@ -115,6 +115,62 @@ export default {
     try {
 
       // --------------------------------
+      // GET /api/exchange-rate
+      // Отримання курсу USD з API НБУ
+      // --------------------------------
+
+      if (path === "/api/exchange-rate") {
+
+        if (method !== "GET") {
+          return jsonResponse(
+            { error: "Метод не підтримується" },
+            405
+          );
+        }
+
+        try {
+          const nbuUrl =
+            "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchangenew?json&valcode=USD";
+
+          const response = await fetch(nbuUrl, {
+            headers: {
+              "Accept": "application/json"
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`НБУ повернув HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (!Array.isArray(data)) {
+            throw new Error("Некоректний формат відповіді НБУ");
+          }
+
+          const usd = data.find(item => item.cc === "USD");
+
+          if (!usd || !Number.isFinite(usd.rate) || usd.rate <= 0) {
+            throw new Error("Курс USD відсутній у відповіді");
+          }
+
+          return jsonResponse({
+            currency: "USD",
+            rate: usd.rate,
+            date: usd.exchangedate
+          });
+
+        } catch (error) {
+          console.error("Помилка API НБУ:", error);
+
+          return jsonResponse(
+            { error: "Не вдалося отримати курс USD від НБУ" },
+            502
+          );
+        }
+      }
+
+      // --------------------------------
       // GET /api/health
       // Перевірка роботи Worker
       // --------------------------------
