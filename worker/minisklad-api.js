@@ -1,92 +1,302 @@
-// Початкові дані «Мініскладу»
-const products = [
-  { id: 1, name: "Комп'ютерна миша", quantity: 20, price: 249, photoUrl: null },
-  { id: 2, name: "Клавіатура", quantity: 2, price: 599, photoUrl: null },
-  { id: 3, name: "USB-накопичувач 64 ГБ", quantity: 18, price: 329, photoUrl: null },
-  { id: 4, name: "Вебкамера", quantity: 2, price: 1290, photoUrl: null }
-];
 
-// Адреса frontend, якому дозволено отримувати відповіді API
-const corsHeaders = {
+// ЛР №6: CRUD REST API для Cloudflare Workers + D1
+
+const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "https://minisklad-lab3.pages.dev",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// Формування HTTP-відповіді у форматі JSON
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      ...corsHeaders
-    }
+      ...CORS_HEADERS,
+    },
   });
 }
 
-// Основний обробник HTTP-запитів
+// Зчитування та перевірка даних товару
+async function readProduct(request) {
+  const contentType = request.headers.get("Content-Type") || "";
+
+  if (!contentType.includes("application/json")) {
+    return {
+      error: "Вкажіть Content-Type: application/json",
+      status: 415
+    };
+  }
+
+  let body;
+
+  try {
+    body = await request.json();
+  } catch {
+    return {
+      error: "Некоректний JSON у тілі запиту",
+      status: 400
+    };
+  }
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return {
+      error: "Очікується JSON-об'єкт із даними товару",
+      status: 400
+    };
+  }
+
+  const {
+    name,
+    quantity,
+    price,
+    photoUrl = null
+  } = body;
+
+  if (typeof name !== "string" || name.trim() === "") {
+    return {
+      error: "Поле name має містити назву товару",
+      status: 400
+    };
+  }
+
+  if (!Number.isInteger(quantity) || quantity < 0) {
+    return {
+      error: "quantity має бути цілим невід'ємним числом",
+      status: 400
+    };
+  }
+
+  if (
+    typeof price !== "number" ||
+    !Number.isFinite(price) ||
+    price < 0
+  ) {
+    return {
+      error: "price має бути невід'ємним числом",
+      status: 400
+    };
+  }
+
+  if (photoUrl !== null && typeof photoUrl !== "string") {
+    return {
+      error: "photoUrl має бути рядком або null",
+      status: 400
+    };
+  }
+
+  return {
+    product: {
+      name: name.trim(),
+      quantity,
+      price,
+      photoUrl
+    }
+  };
+}
+
+// Основний обробник Cloudflare Worker
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
 
-    console.log("HTTP-запит:", request.method, url.pathname);
+    console.log("HTTP-запит:", method, path);
 
-    // Обробка перевірочних CORS-запитів
-    if (request.method === "OPTIONS") {
+    // Обробка CORS
+    if (method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: corsHeaders
+        headers: CORS_HEADERS
       });
     }
 
-    // Поки підтримуємо лише GET
-    if (request.method !== "GET") {
-      return jsonResponse(
-        { error: "Метод не підтримується." },
-        405
-      );
-    }
+    try {
 
-    // Перевірка стану API
-    if (url.pathname === "/api/health") {
-      return jsonResponse({
-        status: "ok",
-        service: "minisklad-api",
-        version: env.APP_VERSION
-      });
-    }
+      // --------------------------------
+      // GET /api/health
+      // Перевірка роботи Worker
+      // --------------------------------
 
-    // Отримання списку товарів
-    /*if (url.pathname === "/api/products") {
-      return jsonResponse(products);
-    }*/ 
+      if (path === "/api/health") {
+        if (method !== "GET") {
+          return jsonResponse(
+            { error: "Метод не підтримується" },
+            405
+          );
+        }
 
-    if (url.pathname === "/api/products") {
-      try {
-        const result = await env.DB
-          .prepare(`
-        SELECT id, name, quantity, price, photoUrl
-        FROM products
-        ORDER BY id
-      `)
-          .all();
+        return jsonResponse({
+          status: "ok",
+          service: "minisklad-api",
+          version: env.APP_VERSION ?? "not-set"
+        });
+      }
 
-        return jsonResponse(result.results);
+      // --------------------------------
+      // /api/products
+      // Отримання та додавання товарів
+      // --------------------------------
 
-      } catch (error) {
-        console.error("Помилка звернення до D1:", error);
+      if (path === "/api/products") {
+
+        // GET - отримання всіх товарів
+        if (method === "GET") {
+          const result = await env.DB
+            .prepare(`
+              SELECT id, name, quantity, price, photoUrl
+              FROM products
+              ORDER BY id
+            `)
+            .all();
+
+          return jsonResponse(result.results);
+        }
+
+        // POST - додавання нового товару
+        if (method === "POST") {
+          const input = await readProduct(request);
+
+          if (input.error) {
+            return jsonResponse(
+              { error: input.error },
+              input.status
+            );
+          }
+
+          const p = input.product;
+
+          const result = await env.DB
+            .prepare(`
+              INSERT INTO products
+              (name, quantity, price, photoUrl)
+              VALUES (?, ?, ?, ?)
+            `)
+            .bind(
+              p.name,
+              p.quantity,
+              p.price,
+              p.photoUrl
+            )
+            .run();
+
+          return jsonResponse({
+            id: result.meta.last_row_id,
+            ...p
+          }, 201);
+        }
 
         return jsonResponse(
-          { error: "Помилка отримання даних із бази даних." },
-          500
+          { error: "Метод не підтримується" },
+          405
         );
       }
-    }
 
-    // Невідомий маршрут
-    return jsonResponse(
-      { error: "API-маршрут не знайдено." },
-      404
-    );
+      // --------------------------------
+      // /api/products/:id
+      // Оновлення та видалення товару
+      // --------------------------------
+
+      const match = path.match(/^\/api\/products\/([^/]+)$/);
+
+      if (match) {
+        const id = Number(match[1]);
+
+        if (!Number.isSafeInteger(id) || id <= 0) {
+          return jsonResponse(
+            { error: "Некоректний ідентифікатор товару" },
+            400
+          );
+        }
+
+        // PUT - оновлення товару
+        if (method === "PUT") {
+          const input = await readProduct(request);
+
+          if (input.error) {
+            return jsonResponse(
+              { error: input.error },
+              input.status
+            );
+          }
+
+          const p = input.product;
+
+          const result = await env.DB
+            .prepare(`
+              UPDATE products
+              SET
+                name = ?,
+                quantity = ?,
+                price = ?,
+                photoUrl = ?
+              WHERE id = ?
+            `)
+            .bind(
+              p.name,
+              p.quantity,
+              p.price,
+              p.photoUrl,
+              id
+            )
+            .run();
+
+          if (result.meta.changes === 0) {
+            return jsonResponse(
+              { error: "Товар не знайдено" },
+              404
+            );
+          }
+
+          return jsonResponse({
+            id,
+            ...p
+          });
+        }
+
+        // DELETE - видалення товару
+        if (method === "DELETE") {
+          const result = await env.DB
+            .prepare(`
+              DELETE FROM products
+              WHERE id = ?
+            `)
+            .bind(id)
+            .run();
+
+          if (result.meta.changes === 0) {
+            return jsonResponse(
+              { error: "Товар не знайдено" },
+              404
+            );
+          }
+
+          return jsonResponse({
+            message: "Товар видалено",
+            id
+          });
+        }
+
+        return jsonResponse(
+          { error: "Метод не підтримується" },
+          405
+        );
+      }
+
+      // Невідомий маршрут
+      return jsonResponse(
+        { error: "Маршрут не знайдено" },
+        404
+      );
+
+    } catch (error) {
+      console.error("Помилка Worker / D1:", error);
+
+      return jsonResponse(
+        { error: "Внутрішня помилка сервера" },
+        500
+      );
+    }
   }
 };
