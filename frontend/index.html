@@ -31,6 +31,19 @@
       </div>
     </section>
 
+    <section class="currency-panel">
+      <label for="currency-select">Відображення цін:</label>
+
+      <select id="currency-select" disabled>
+        <option value="UAH">Гривня (UAH)</option>
+        <option value="USD">Долар США (USD)</option>
+      </select>
+
+      <span id="rate-status">
+        Отримання курсу НБУ...
+      </span>
+    </section>
+
     <section class="stats" aria-label="Показники складу">
       <article class="stat-card">
         <p>Найменувань</p>
@@ -83,6 +96,7 @@
                 <th class="number">Ціна</th>
                 <th class="number">Вартість</th>
                 <th>Стан</th>
+                <th>Дії</th>
               </tr>
             </thead>
             <tbody id="products-body"></tbody>
@@ -130,7 +144,9 @@
       </aside>
     </div>
 
-    <footer class="site-footer">Навчальний проєкт «Мінісклад» · Node.js / Express / HTML / CSS / JavaScript</footer>
+    <footer class="site-footer">
+      Навчальний проєкт «Мінісклад» · Cloudflare Pages / Workers / D1 / API НБУ
+    </footer>
   </main>
 </body>
 
