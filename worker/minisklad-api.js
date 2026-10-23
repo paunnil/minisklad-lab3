@@ -129,42 +129,65 @@ export default {
         }
 
         try {
+
+          // 1. Спробувати прочитати курс із KV
+          const cached = await env.NBU_CACHE.get("USD_RATE", "json");
+
+          if (cached && cached.rate > 0) {
+            console.log("Курс USD отримано з Cloudflare KV");
+
+            return jsonResponse({
+              ...cached,
+              source: "KV"
+            });
+          }
+
+          // 2. Якщо кеш порожній, звернутися до API НБУ
+          console.log("Кеш порожній. Звернення до API НБУ");
+
           const nbuUrl =
             "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchangenew?json&valcode=USD";
 
-          const response = await fetch(nbuUrl, {
-            headers: {
-              "Accept": "application/json"
-            }
-          });
+          const response = await fetch(nbuUrl);
 
           if (!response.ok) {
             throw new Error(`НБУ повернув HTTP ${response.status}`);
           }
 
           const data = await response.json();
-
-          if (!Array.isArray(data)) {
-            throw new Error("Некоректний формат відповіді НБУ");
-          }
-
           const usd = data.find(item => item.cc === "USD");
 
           if (!usd || !Number.isFinite(usd.rate) || usd.rate <= 0) {
-            throw new Error("Курс USD відсутній у відповіді");
+            throw new Error("Не вдалося отримати курс USD");
           }
 
-          return jsonResponse({
+          // 3. Підготувати дані
+          const exchangeRate = {
             currency: "USD",
             rate: usd.rate,
             date: usd.exchangedate
+          };
+
+          // 4. Зберегти курс у KV на 1 годину
+          await env.NBU_CACHE.put(
+            "USD_RATE",
+            JSON.stringify(exchangeRate),
+            { expirationTtl: 3600 }
+          );
+
+          console.log("Курс USD збережено в Cloudflare KV");
+
+          // 5. Повернути дані користувачу
+          return jsonResponse({
+            ...exchangeRate,
+            source: "NBU"
           });
 
         } catch (error) {
-          console.error("Помилка API НБУ:", error);
+          console.error("Помилка отримання курсу:", error);
 
           return jsonResponse(
-            { error: "Не вдалося отримати курс USD від НБУ" },
+            { error: "Не вдалося отримати курс USD" },
             502
           );
         }
